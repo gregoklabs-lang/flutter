@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/routes/app_routes.dart';
+import '../../core/services/auth_session.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -47,10 +48,9 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
 
       if (response.session != null) {
+        AuthSession.I.refreshCurrentUser();
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Sesión iniciada correctamente.'),
-          ),
+          const SnackBar(content: Text('Sesión iniciada correctamente.')),
         );
 
         Navigator.pushReplacementNamed(context, AppRoutes.home);
@@ -84,9 +84,7 @@ class _LoginPageState extends State<LoginPage> {
       hintText: hint,
       filled: true,
       fillColor: Colors.white,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
@@ -199,24 +197,26 @@ class _LoginPageState extends State<LoginPage> {
                               TextFormField(
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
-                                decoration: _inputDecoration(
-                                  'Contraseña*',
-                                  'Introduce tu contraseña',
-                                ).copyWith(
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                      color: Colors.grey.shade700,
+                                decoration:
+                                    _inputDecoration(
+                                      'Contraseña*',
+                                      'Introduce tu contraseña',
+                                    ).copyWith(
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscurePassword
+                                              ? Icons.visibility_off
+                                              : Icons.visibility,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _obscurePassword =
+                                                !_obscurePassword;
+                                          });
+                                        },
+                                      ),
                                     ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _obscurePassword = !_obscurePassword;
-                                      });
-                                    },
-                                  ),
-                                ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Ingresa tu contraseña';
@@ -264,7 +264,9 @@ class _LoginPageState extends State<LoginPage> {
                                 children: [
                                   TextButton(
                                     onPressed: () {},
-                                    child: const Text('¿Olvidaste tu contraseña?'),
+                                    child: const Text(
+                                      '¿Olvidaste tu contraseña?',
+                                    ),
                                   ),
                                   TextButton(
                                     onPressed: () {},

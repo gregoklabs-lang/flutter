@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/supabase_credentials.dart';
 import 'core/routes/app_routes.dart';
+import 'core/services/auth_session.dart';
 import 'core/theme/app_theme.dart';
 
 void main() async {
@@ -13,6 +14,7 @@ void main() async {
     url: SupabaseCredentials.supabaseUrl,
     anonKey: SupabaseCredentials.supabaseAnonKey,
   );
+  AuthSession.I.refreshCurrentUser();
   final session = Supabase.instance.client.auth.currentSession;
   final initialRoute = session == null ? AppRoutes.login : AppRoutes.home;
 

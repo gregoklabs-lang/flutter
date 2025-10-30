@@ -31,12 +31,14 @@ class _HomeScreenState extends State<HomeScreen> {
     ]);
   }
 
-  Future<void> _onLogout(BuildContext context) async {
+  Future<void> _onLogout() async {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
       await Supabase.instance.client.auth.signOut();
     } on AuthException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(error.message),
           backgroundColor: Colors.redAccent,
@@ -44,8 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return;
     } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Error inesperado: $error'),
           backgroundColor: Colors.redAccent,
@@ -56,11 +57,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
 
-    Navigator.pushNamedAndRemoveUntil(
+    Navigator.of(
       context,
-      AppRoutes.login,
-      (_) => false,
-    );
+    ).pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
   }
 
   Widget _buildDashboardPage() {
@@ -82,17 +81,17 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
             Text(
               'Bienvenido${_userEmail != null ? ' ${_userEmail!}' : ''}',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => _onLogout(context),
+              onPressed: _onLogout,
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -105,12 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  final List<String> _titles = [
-    'Dashboard',
-    'Modify',
-    'History',
-    'Devices',
-  ];
+  final List<String> _titles = ['Dashboard', 'Modify', 'History', 'Devices'];
 
   final List<String> _icons = [
     'assets/icons/dashboard.png',
@@ -139,8 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _icons[index],
               width: 24,
               height: 24,
-              color:
-                  _currentIndex == index ? Colors.blueAccent : Colors.grey,
+              color: _currentIndex == index ? Colors.blueAccent : Colors.grey,
             ),
             label: _titles[index],
           );

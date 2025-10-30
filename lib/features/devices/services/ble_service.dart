@@ -170,6 +170,7 @@ class BleService {
   Future<void> sendWifiCredentials({
     required String ssid,
     required String password,
+    String? userId,
   }) async {
     final device = _connected;
     if (device == null) {
@@ -211,6 +212,8 @@ class BleService {
 
     final normalizedSsid = normalize(ssid);
     final normalizedPass = normalize(password);
+    final normalizedUserId = userId == null ? '' : normalize(userId);
+    final hasUserId = normalizedUserId.isNotEmpty;
 
     // El firmware actualizado acepta "SSID\nPASS". Mantener un payload alternativo con
     // el antiguo separador "|" nos permite retrocompatibilidad si el usuario no ha
@@ -218,9 +221,20 @@ class BleService {
     final payloads = <({String label, List<int> bytes})>[
       (
         label: 'newline',
-        bytes: utf8.encode('$normalizedSsid\n$normalizedPass'),
+        bytes: utf8.encode(
+          hasUserId
+              ? '$normalizedSsid\n$normalizedPass\n$normalizedUserId'
+              : '$normalizedSsid\n$normalizedPass',
+        ),
       ),
-      (label: 'legacy', bytes: utf8.encode('$normalizedSsid|$normalizedPass')),
+      (
+        label: 'legacy',
+        bytes: utf8.encode(
+          hasUserId
+              ? '$normalizedSsid|$normalizedPass|$normalizedUserId'
+              : '$normalizedSsid|$normalizedPass',
+        ),
+      ),
     ];
 
     FlutterBluePlusException? lastGattError;
