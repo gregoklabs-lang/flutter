@@ -1,33 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/routes/app_routes.dart';
-import '../../core/services/auth_session.dart';
-
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
-  Future<void> _onLogin() async {
-    if (!(_formKey.currentState?.validate() ?? false)) {
+  InputDecoration _inputDecoration(String label, String hint) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+      ),
+    );
+  }
+
+  Future<void> _onRegister() async {
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) {
       return;
     }
 
@@ -38,27 +53,28 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     final messenger = ScaffoldMessenger.of(context);
+    final String email = _emailController.text.trim();
+    final String password = _passwordController.text;
 
     try {
-      final response = await Supabase.instance.client.auth.signInWithPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+      final AuthResponse response = await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
       );
 
-      if (!mounted) {
+      if (!mounted) return;
+
+      if (response.user != null) {
+        Navigator.of(context).pop(true);
         return;
       }
 
-      if (response.session != null) {
-        AuthSession.I.refreshCurrentUser();
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            const SnackBar(content: Text('Sesion iniciada correctamente.')),
-          );
-
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
-      }
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('No pudimos completar el registro.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     } on AuthException catch (error) {
       messenger.showSnackBar(
         SnackBar(
@@ -80,20 +96,6 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
     }
-  }
-
-  InputDecoration _inputDecoration(String label, String hint) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
-      ),
-    );
   }
 
   @override
@@ -135,19 +137,19 @@ class _LoginPageState extends State<LoginPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
-                          Icons.lock_outline,
-                          size: 64,
+                          Icons.app_registration,
                           color: Colors.blueAccent,
+                          size: 64,
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Bienvenido',
+                          'Crear cuenta',
                           style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          'Inicia sesion con tu correo y contrasena para continuar.',
+                          'Registra un nuevo correo y contrasena para usar la app.',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 14, color: Colors.black54),
                         ),
@@ -199,10 +201,43 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Ingresa tu contrasena';
+                                    return 'Ingresa una contrasena';
                                   }
                                   if (value.length < 6) {
-                                    return 'La contrasena debe tener al menos 6 caracteres';
+                                    return 'Debe tener minimo 6 caracteres';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 18),
+                              TextFormField(
+                                controller: _confirmController,
+                                obscureText: _obscureConfirm,
+                                decoration:
+                                    _inputDecoration(
+                                      'Confirmar contrasena*',
+                                      'Repite tu contrasena',
+                                    ).copyWith(
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscureConfirm
+                                              ? Icons.visibility_off
+                                              : Icons.visibility,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _obscureConfirm = !_obscureConfirm;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Confirma tu contrasena';
+                                  }
+                                  if (value != _passwordController.text) {
+                                    return 'Las contrasenas no coinciden';
                                   }
                                   return null;
                                 },
@@ -219,7 +254,7 @@ class _LoginPageState extends State<LoginPage> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
-                                  onPressed: _isLoading ? null : _onLogin,
+                                  onPressed: _isLoading ? null : _onRegister,
                                   child: _isLoading
                                       ? const SizedBox(
                                           height: 22,
@@ -229,49 +264,17 @@ class _LoginPageState extends State<LoginPage> {
                                           ),
                                         )
                                       : const Text(
-                                          'Iniciar sesion',
+                                          'Crear cuenta',
                                           style: TextStyle(fontSize: 16),
                                         ),
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  TextButton(
-                                    onPressed: () {},
-                                    child: const Text(
-                                      'Olvidaste tu contrasena?',
-                                    ),
-                                  ),
-                                  TextButton(
-                                    onPressed: _isLoading
-                                        ? null
-                                        : () async {
-                                            final result =
-                                                await Navigator.pushNamed(
-                                                  context,
-                                                  AppRoutes.register,
-                                                );
-                                            if (!context.mounted) {
-                                              return;
-                                            }
-                                            if (result == true) {
-                                              ScaffoldMessenger.of(context)
-                                                ..hideCurrentSnackBar()
-                                                ..showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'Registro completado. Inicia sesion.',
-                                                    ),
-                                                  ),
-                                                );
-                                            }
-                                          },
-                                    child: const Text('Registrate'),
-                                  ),
-                                ],
+                              TextButton(
+                                onPressed: _isLoading
+                                    ? null
+                                    : () => Navigator.of(context).pop(),
+                                child: const Text('Ya tengo cuenta'),
                               ),
                             ],
                           ),
