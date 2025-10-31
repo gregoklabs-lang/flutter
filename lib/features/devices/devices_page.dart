@@ -58,7 +58,7 @@ class _DevicesPageState extends State<DevicesPage> {
     try {
       final List<dynamic> response = await _supabase
           .from('devices')
-          .select()
+          .select('id, device_id, device_name, device_status, last_seen')
           .eq('user_id', userId)
           .order('last_seen', ascending: false, nullsFirst: false);
 
@@ -124,13 +124,62 @@ class _DevicesPageState extends State<DevicesPage> {
   Future<void> _onRefresh() => _loadDevices();
 
   Future<void> _onDeviceTap(_DeviceRecord device) async {
-    final String? newName = await _promptRename(device);
+    final _DeviceAction? action = await _showDeviceActions(device);
 
-    if (newName == null || newName == device.name) {
+    if (action == null) {
       return;
     }
 
-    await _renameDevice(device, newName);
+    switch (action) {
+      case _DeviceAction.rename:
+        final String? newName = await _promptRename(device);
+        if (newName == null || newName == device.name) {
+          return;
+        }
+        await _renameDevice(device, newName);
+        break;
+      case _DeviceAction.delete:
+        final bool confirmed = await _confirmDelete(device);
+        if (!confirmed) {
+          return;
+        }
+        await _deleteDevice(device);
+        break;
+    }
+  }
+
+  Future<_DeviceAction?> _showDeviceActions(_DeviceRecord device) {
+    return showDialog<_DeviceAction>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Set up del dispositivo'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Renombrar'),
+                onTap: () =>
+                    Navigator.of(dialogContext).pop(_DeviceAction.rename),
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Eliminar'),
+                onTap: () =>
+                    Navigator.of(dialogContext).pop(_DeviceAction.delete),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<String?> _promptRename(_DeviceRecord device) {
@@ -197,6 +246,13 @@ class _DevicesPageState extends State<DevicesPage> {
       return;
     }
 
+    if (device.rowId.isEmpty) {
+      _showSnackBar(
+        'No pudimos identificar el dispositivo. Refresca la lista e intenta de nuevo.',
+      );
+      return;
+    }
+
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -212,11 +268,7 @@ class _DevicesPageState extends State<DevicesPage> {
           .eq('user_id', userId)
           .eq('device_name', newName);
 
-      if (device.rowId.isNotEmpty) {
-        duplicatesQuery = duplicatesQuery.neq('id', device.rowId);
-      } else {
-        duplicatesQuery = duplicatesQuery.neq('device_id', device.id);
-      }
+      duplicatesQuery = duplicatesQuery.neq('id', device.rowId);
 
       final List<dynamic> duplicates = await duplicatesQuery.limit(1);
 
@@ -228,13 +280,8 @@ class _DevicesPageState extends State<DevicesPage> {
       var updateQuery = _supabase
           .from('devices')
           .update({'device_name': newName})
-          .eq('user_id', userId);
-
-      if (device.rowId.isNotEmpty) {
-        updateQuery = updateQuery.eq('id', device.rowId);
-      } else {
-        updateQuery = updateQuery.eq('device_id', device.id);
-      }
+          .eq('user_id', userId)
+          .eq('id', device.rowId);
 
       await updateQuery;
 
@@ -252,6 +299,94 @@ class _DevicesPageState extends State<DevicesPage> {
 
     if (shouldRefresh) {
       await _loadDevices(showLoader: false);
+    }
+  }
+
+  Future<bool> _confirmDelete(_DeviceRecord device) async {
+    final bool? result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Eliminar dispositivo'),
+          content: Text(
+            'Estas seguro de eliminar "${device.name}"? Esta accion no se puede deshacer.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton.tonal(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+  Future<void> _deleteDevice(_DeviceRecord device) async {
+    final String? userId = _supabase.auth.currentUser?.id;
+
+    if (userId == null) {
+      _showSnackBar('No se encontro la sesion de usuario.');
+      return;
+    }
+
+    if (device.rowId.isEmpty) {
+      _showSnackBar(
+        'No pudimos identificar el dispositivo. Refresca la lista e intenta de nuevo.',
+      );
+      return;
+    }
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    bool success = false;
+
+    try {
+      final List<dynamic> deletedById = await _supabase
+          .from('devices')
+          .delete()
+          .eq('id', device.rowId)
+          .select('id');
+
+      List<dynamic> deleted = deletedById;
+
+      if (deleted.isEmpty && device.id != 'N/D') {
+        deleted = await _supabase
+            .from('devices')
+            .delete()
+            .eq('user_id', userId)
+            .eq('device_id', device.id)
+            .select('id');
+      }
+
+      if (deleted.isEmpty) {
+        _showSnackBar('No encontramos el dispositivo a eliminar.');
+      } else {
+        success = true;
+        _showSnackBar('Dispositivo eliminado.');
+      }
+    } on PostgrestException catch (error) {
+      _showSnackBar('No pudimos eliminar el dispositivo: ${error.message}');
+    } catch (error) {
+      _showSnackBar('No pudimos eliminar el dispositivo: $error');
+    } finally {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+
+    if (success) {
+      await _loadDevices();
     }
   }
 
@@ -453,6 +588,8 @@ class _DeviceRecord {
     return '$yyyy-$mm-$dd $hh:$min';
   }
 }
+
+enum _DeviceAction { rename, delete }
 
 class _StatusDecoration {
   const _StatusDecoration({
