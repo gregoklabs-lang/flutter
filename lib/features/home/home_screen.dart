@@ -3,8 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/routes/app_routes.dart';
 import '../modify/modify_page.dart';
-import '../history/history_page.dart';
 import '../devices/devices_page.dart';
+import '../history/history_page.dart';
+import '../settings/settings_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _pages.addAll([
       _buildDashboardPage(),
       const ModifyPage(),
+      const SettingsPage(),
       const HistoryPage(),
       const DevicesPage(),
     ]);
@@ -104,11 +106,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  final List<String> _titles = ['Dashboard', 'Modify', 'History', 'Devices'];
+  final List<String> _titles = [
+    'Dashboard',
+    'Modify',
+    'Settings',
+    'History',
+    'Devices',
+  ];
 
   final List<String> _icons = [
     'assets/icons/dashboard.png',
     'assets/icons/edit.png',
+    'assets/icons/configuraciones.png',
     'assets/icons/history.png',
     'assets/icons/devices.png',
   ];

@@ -36,6 +36,7 @@ flutter:
     - assets/logo.png
     - assets/icons/dashboard.png
     - assets/icons/edit.png
+    - assets/icons/configuraciones.png
     - assets/icons/history.png
     - assets/icons/devices.png
     - .env
