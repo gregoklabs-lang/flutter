@@ -19,22 +19,6 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
 
-  static const List<DropdownMenuItem<String>> _reservoirUnitItems = [
-    DropdownMenuItem(value: 'L', child: Text('Litros (L)')),
-    DropdownMenuItem(value: 'gal', child: Text('Galones (gal)')),
-  ];
-
-  static const List<DropdownMenuItem<String>> _temperatureUnitItems = [
-    DropdownMenuItem(value: 'C', child: Text('Celsius (C)')),
-    DropdownMenuItem(value: 'F', child: Text('Fahrenheit (F)')),
-  ];
-
-  static const List<DropdownMenuItem<String>> _nutrientUnitItems = [
-    DropdownMenuItem(value: 'mS/cm', child: Text('mS/cm')),
-    DropdownMenuItem(value: 'ppm500', child: Text('PPM 500')),
-    DropdownMenuItem(value: 'ppm700', child: Text('PPM 700')),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -242,52 +226,31 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('reservoir-$_reservoirUnit'),
-                    initialValue: _reservoirUnit,
+                  TextField(
+                    controller: TextEditingController(text: _reservoirUnit),
+                    readOnly: true,
                     decoration: const InputDecoration(
                       labelText: 'Reservoir size units',
                       border: OutlineInputBorder(),
                     ),
-                    items: _reservoirUnitItems,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _reservoirUnit = value;
-                      });
-                    },
                   ),
                   const SizedBox(height: 20),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('temp-$_temperatureUnit'),
-                    initialValue: _temperatureUnit,
+                  TextField(
+                    controller: TextEditingController(text: _temperatureUnit),
+                    readOnly: true,
                     decoration: const InputDecoration(
                       labelText: 'Temperature units',
                       border: OutlineInputBorder(),
                     ),
-                    items: _temperatureUnitItems,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _temperatureUnit = value;
-                      });
-                    },
                   ),
                   const SizedBox(height: 20),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('nutrients-$_nutrientUnit'),
-                    initialValue: _nutrientUnit,
+                  TextField(
+                    controller: TextEditingController(text: _nutrientUnit),
+                    readOnly: true,
                     decoration: const InputDecoration(
                       labelText: 'Nutrients units',
                       border: OutlineInputBorder(),
                     ),
-                    items: _nutrientUnitItems,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _nutrientUnit = value;
-                      });
-                    },
                   ),
                   const SizedBox(height: 20),
                   Card(

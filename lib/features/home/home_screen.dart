@@ -78,10 +78,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
       DeviceSummary? newSelected = _selectedDevice;
       if (parsed.isNotEmpty) {
-        newSelected = parsed.firstWhere(
-          (device) => device.rowId == _selectedDevice?.rowId,
-          orElse: () => parsed.first,
-        );
+        if (_selectedDevice == null) {
+          newSelected = parsed.first;
+        } else if (parsed.length == 1) {
+          newSelected = parsed.first;
+        } else {
+          newSelected = parsed.firstWhere(
+            (device) => device.rowId == _selectedDevice?.rowId,
+            orElse: () => parsed.first,
+          );
+        }
       } else {
         newSelected = null;
       }

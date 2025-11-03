@@ -20,6 +20,7 @@ class _ModifyPageState extends State<ModifyPage> {
   DeviceSetpoint? _setpoint;
   bool _isLoading = false;
   String? _errorMessage;
+  RealtimeChannel? _subscription;
 
   @override
   void initState() {
@@ -28,9 +29,16 @@ class _ModifyPageState extends State<ModifyPage> {
   }
 
   @override
+  void dispose() {
+    _subscription?.unsubscribe();
+    super.dispose();
+  }
+
+  @override
   void didUpdateWidget(covariant ModifyPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedDevice?.deviceId != widget.selectedDevice?.deviceId) {
+      _subscription?.unsubscribe();
       _loadData();
     }
   }
@@ -62,22 +70,25 @@ class _ModifyPageState extends State<ModifyPage> {
       _errorMessage = null;
     });
 
-    try {
-      final data = await _repository.fetch(widget.selectedDevice);
-
-      if (!mounted) return;
-      setState(() {
-        _setpoint = data;
-        _isLoading = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _setpoint = null;
-        _errorMessage = 'Error inesperado: $error';
-        _isLoading = false;
-      });
-    }
+    _subscription?.unsubscribe();
+    _subscription = _repository.subscribe(
+      device: widget.selectedDevice!,
+      onData: (data) {
+        if (!mounted) return;
+        setState(() {
+          _setpoint = data;
+          _isLoading = false;
+        });
+      },
+      onError: (error) {
+        if (!mounted) return;
+        setState(() {
+          _setpoint = null;
+          _errorMessage = 'Error inesperado: $error';
+          _isLoading = false;
+        });
+      },
+    );
   }
 
   @override

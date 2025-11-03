@@ -81,6 +81,55 @@ class SetpointRepository {
       updatedAt: _toDate(row['updated_at']),
     );
   }
+
+  RealtimeChannel subscribe({
+    required DeviceSummary device,
+    required void Function(DeviceSetpoint? data) onData,
+    required void Function(Object error) onError,
+  }) {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw StateError('No authenticated user.');
+    }
+    final channel = _client.channel(
+      'setpoints:${device.deviceId}',
+      opts: const RealtimeChannelConfig(ack: true),
+    );
+
+    Future<void> loadInitial() async {
+      try {
+        final data = await fetch(device);
+        onData(data);
+      } catch (error) {
+        onError(error);
+      }
+    }
+
+    loadInitial();
+
+    channel
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'cultivemos_setpoints',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'device_id',
+          value: device.deviceId,
+        ),
+        callback: (_) async {
+          try {
+            final data = await fetch(device);
+            onData(data);
+          } catch (error) {
+            onError(error);
+          }
+        },
+      )
+      ..subscribe();
+
+    return channel;
+  }
 }
 
 double? _toDouble(dynamic value) {
