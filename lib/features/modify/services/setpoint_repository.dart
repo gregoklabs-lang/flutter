@@ -1,0 +1,120 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/models/device_summary.dart';
+
+class DeviceSetpoint {
+  const DeviceSetpoint({
+    required this.units,
+    this.id,
+    this.phTarget,
+    this.ecTarget,
+    this.reservoirSize,
+    this.flowTargetLMin,
+    this.tempTarget,
+    this.dosingMode,
+    this.active,
+    this.updatedAt,
+  });
+
+  final String units;
+  final String? id;
+  final double? phTarget;
+  final double? ecTarget;
+  final double? reservoirSize;
+  final double? flowTargetLMin;
+  final double? tempTarget;
+  final String? dosingMode;
+  final bool? active;
+  final DateTime? updatedAt;
+}
+
+class SetpointRepository {
+  SetpointRepository({SupabaseClient? client})
+    : _client = client ?? Supabase.instance.client;
+
+  final SupabaseClient _client;
+
+  Future<DeviceSetpoint?> fetch(DeviceSummary? device) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return null;
+    }
+    if (device == null || device.deviceId.isEmpty) {
+      return null;
+    }
+
+    final settings = await _client
+        .from('user_settings')
+        .select('reservoir_size_units')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    final String units = _normalizeReservoirUnit(
+      settings?['reservoir_size_units'] as String?,
+    );
+
+    final Map<String, dynamic>? row = await _client
+        .from('cultivemos_setpoints')
+        .select(
+          'id, ph_target, ec_target, reservoir_size, flow_target_l_min, temp_target, dosing_mode, active, updated_at',
+        )
+        .eq('user_id', user.id)
+        .eq('device_id', device.deviceId)
+        .order('updated_at', ascending: false, nullsFirst: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (row == null) {
+      return DeviceSetpoint(units: units);
+    }
+
+    return DeviceSetpoint(
+      units: units,
+      id: row['id']?.toString(),
+      phTarget: _toDouble(row['ph_target']),
+      ecTarget: _toDouble(row['ec_target']),
+      reservoirSize: _toDouble(row['reservoir_size']),
+      flowTargetLMin: _toDouble(row['flow_target_l_min']),
+      tempTarget: _toDouble(row['temp_target']),
+      dosingMode: row['dosing_mode'] as String?,
+      active: row['active'] as bool?,
+      updatedAt: _toDate(row['updated_at']),
+    );
+  }
+}
+
+double? _toDouble(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is num) {
+    return value.toDouble();
+  }
+  return double.tryParse(value.toString());
+}
+
+DateTime? _toDate(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is DateTime) {
+    return value;
+  }
+  return DateTime.tryParse(value.toString());
+}
+
+String _normalizeReservoirUnit(String? raw) {
+  switch ((raw ?? '').toLowerCase()) {
+    case 'gal':
+    case 'galon':
+    case 'galones':
+    case 'gallon':
+    case 'gallons':
+      return 'gal';
+    case 'l':
+    case 'litro':
+    case 'litros':
+    default:
+      return 'L';
+  }
+}

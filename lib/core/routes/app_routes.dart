@@ -8,6 +8,8 @@ import '../../features/modify/ph_balance_page.dart';
 import '../../features/modify/manual_dosing_page.dart';
 import '../../features/modify/smart_dosing_page.dart';
 import '../../features/modify/flush_page.dart';
+import '../../core/models/device_summary.dart';
+import '../../features/modify/reservoir_size_page.dart';
 
 class AppRoutes {
   static const splash = '/';
@@ -19,6 +21,7 @@ class AppRoutes {
   static const manualDosing = '/modify/manual-dosing';
   static const smartDosing = '/modify/smart-dosing';
   static const flush = '/modify/flush';
+  static const reservoirSize = '/modify/reservoir-size';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (context) => const SplashScreen(),
@@ -26,9 +29,55 @@ class AppRoutes {
     addDevice: (context) => const AddDevicePage(),
     login: (context) => const LoginPage(),
     register: (context) => const RegisterPage(),
-    phBalance: (context) => const PhBalancePage(),
-    manualDosing: (context) => const ManualDosingPage(),
-    smartDosing: (context) => const SmartDosingPage(),
-    flush: (context) => const FlushPage(),
+    phBalance: (context) {
+      final device = _extractDeviceSummary(
+        ModalRoute.of(context)?.settings.arguments,
+      );
+      return PhBalancePage(device: device);
+    },
+    manualDosing: (context) {
+      final device = _extractDeviceSummary(
+        ModalRoute.of(context)?.settings.arguments,
+      );
+      return ManualDosingPage(device: device);
+    },
+    smartDosing: (context) {
+      final device = _extractDeviceSummary(
+        ModalRoute.of(context)?.settings.arguments,
+      );
+      return SmartDosingPage(device: device);
+    },
+    flush: (context) {
+      final device = _extractDeviceSummary(
+        ModalRoute.of(context)?.settings.arguments,
+      );
+      return FlushPage(device: device);
+    },
+    reservoirSize: (context) {
+      final device = _extractDeviceSummary(
+        ModalRoute.of(context)?.settings.arguments,
+      );
+      return ReservoirSizePage(device: device);
+    },
   };
+}
+
+DeviceSummary? _extractDeviceSummary(Object? args) {
+  if (args is DeviceSummary) {
+    return args;
+  }
+  if (args is Map<String, dynamic>) {
+    final rowId =
+        args['rowId']?.toString() ?? args['deviceRowId']?.toString() ?? '';
+    final deviceId = args['deviceId']?.toString() ?? '';
+    final name =
+        args['name']?.toString() ??
+        args['deviceName']?.toString() ??
+        'Sin nombre';
+    if (rowId.isEmpty && deviceId.isEmpty) {
+      return null;
+    }
+    return DeviceSummary(rowId: rowId, deviceId: deviceId, name: name);
+  }
+  return null;
 }
